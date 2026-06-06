@@ -6,21 +6,46 @@ import { useGameStore } from '../../stores/gameStore';
 import PlayerController from './PlayerController';
 import ApartmentScene from './scenes/ApartmentScene';
 import CityScene from './scenes/CityScene';
+import CyberCafeScene from './scenes/CyberCafeScene';
+import ComputerStoreScene from './scenes/ComputerStoreScene';
+import GenericInteriorScene from './scenes/GenericInteriorScene';
 import NPCSystem from './NPCSystem';
 import HUD from '../HUD/HUD';
 import ExOS from '../ExOS/ExOS';
 import DialogueSystem from '../Dialogue/DialogueSystem';
 import InteractionPrompt from '../UI/InteractionPrompt';
+import LocationTransition from '../UI/LocationTransition';
 import MiniMap from '../HUD/MiniMap';
 import MobileControls from '../UI/MobileControls';
 
+// ── Interior scene lighting presets ──────────────────────────────────────────
+// City exterior uses the global directional sun + hemisphere light.
+// Interiors use only ambient + point lights defined inside the scene components,
+// so we suppress the directional sun light when inside.
+const INTERIOR_LOCATIONS = new Set(['apartment', 'cyber-cafe', 'computer-store']);
+function isInteriorLocation(loc: string) {
+  return INTERIOR_LOCATIONS.has(loc) || loc.startsWith('building-');
+}
+
 export default function GameWorld() {
-  const isUsingComputer = useGameStore((s) => s.isUsingComputer);
+  const isUsingComputer   = useGameStore((s) => s.isUsingComputer);
   const activeDialogueNPC = useGameStore((s) => s.activeDialogueNPC);
-  const currentLocation = useGameStore((s) => s.currentLocation);
-  const settings = useGameStore((s) => s.settings);
+  const currentLocation   = useGameStore((s) => s.currentLocation);
+  const settings          = useGameStore((s) => s.settings);
 
   const isInApartment = currentLocation === 'apartment';
+  const isInCity      = currentLocation === 'city';
+  const isInterior    = isInteriorLocation(currentLocation);
+
+  // Pick the active 3-D scene
+  function renderScene() {
+    if (isInApartment)                    return <ApartmentScene />;
+    if (isInCity)                         return <CityScene />;
+    if (currentLocation === 'cyber-cafe') return <CyberCafeScene />;
+    if (currentLocation === 'computer-store') return <ComputerStoreScene />;
+    if (currentLocation.startsWith('building-')) return <GenericInteriorScene />;
+    return <CityScene />;
+  }
 
   return (
     <motion.div
@@ -39,42 +64,48 @@ export default function GameWorld() {
           gl={{ antialias: settings.graphicsQuality !== 'low', powerPreference: 'high-performance' }}
         >
           <Suspense fallback={null}>
-            {/* Lighting */}
-            <ambientLight intensity={0.6} color="#fff8f0" />
-            <directionalLight
-              position={[50, 80, 30]}
-              intensity={1.2}
-              castShadow
-              shadow-mapSize={[2048, 2048]}
-              shadow-camera-far={200}
-              shadow-camera-left={-50}
-              shadow-camera-right={50}
-              shadow-camera-top={50}
-              shadow-camera-bottom={-50}
-              color="#fffaf0"
-            />
-            <hemisphereLight args={['#87ceeb', '#7ec850', 0.4]} />
+            {/* ── Global lighting ─────────────────────────────────────────── */}
+            <ambientLight intensity={isInterior ? 0 : 0.6} color="#fff8f0" />
 
-            {/* Sky */}
-            <Sky
-              distance={450000}
-              sunPosition={[100, 20, 100]}
-              inclination={0.49}
-              azimuth={0.25}
-              turbidity={8}
-              rayleigh={0.5}
-            />
+            {/* Sun — exterior only */}
+            {!isInterior && (
+              <directionalLight
+                position={[50, 80, 30]}
+                intensity={1.2}
+                castShadow
+                shadow-mapSize={[2048, 2048]}
+                shadow-camera-far={200}
+                shadow-camera-left={-50}
+                shadow-camera-right={50}
+                shadow-camera-top={50}
+                shadow-camera-bottom={-50}
+                color="#fffaf0"
+              />
+            )}
+            {!isInterior && <hemisphereLight args={['#87ceeb', '#7ec850', 0.4]} />}
 
-            {/* Stars (visible at night) */}
-            <Stars radius={300} depth={60} count={1000} factor={4} fade />
+            {/* Sky + stars — exterior only */}
+            {isInCity && (
+              <>
+                <Sky
+                  distance={450000}
+                  sunPosition={[100, 20, 100]}
+                  inclination={0.49}
+                  azimuth={0.25}
+                  turbidity={8}
+                  rayleigh={0.5}
+                />
+                <Stars radius={300} depth={60} count={1000} factor={4} fade />
+              </>
+            )}
 
-            {/* Scenes */}
-            {isInApartment ? <ApartmentScene /> : <CityScene />}
+            {/* ── Active scene ─────────────────────────────────────────────── */}
+            {renderScene()}
 
-            {/* NPCs (only in city) */}
-            {!isInApartment && <NPCSystem />}
+            {/* NPCs only in city */}
+            {isInCity && <NPCSystem />}
 
-            {/* Player controller (FPP) */}
+            {/* Player controller */}
             <PlayerController />
 
             <Preload all />
@@ -85,7 +116,7 @@ export default function GameWorld() {
       {/* ExOS overlay */}
       {isUsingComputer && <ExOS />}
 
-      {/* HUD (only in world, not in ExOS) */}
+      {/* HUD */}
       {!isUsingComputer && !activeDialogueNPC && <HUD />}
 
       {/* Crosshair */}
@@ -98,6 +129,9 @@ export default function GameWorld() {
 
       {/* Mini map */}
       {!isUsingComputer && !activeDialogueNPC && <MiniMap />}
+
+      {/* Location transition overlay — renders on every location change */}
+      <LocationTransition />
 
       {/* Dialogue system */}
       {activeDialogueNPC && <DialogueSystem />}

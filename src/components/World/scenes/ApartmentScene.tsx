@@ -1,12 +1,20 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../../../stores/gameStore';
+import { registerColliders, clearColliders } from '../../../utils/colliders';
+import { APARTMENT_COLLIDERS } from '../../../utils/apartmentColliders';
 
 export default function ApartmentScene() {
   const nearbyInteractable = useGameStore((s) => s.nearbyInteractable);
   const monitorGlowRef = useRef<THREE.PointLight>(null);
+
+  // Register apartment colliders when this scene mounts; clear on unmount
+  useEffect(() => {
+    registerColliders('apartment', APARTMENT_COLLIDERS);
+    return () => clearColliders('apartment');
+  }, []);
 
   // Subtle monitor flicker
   useFrame((state) => {

@@ -30,6 +30,7 @@ interface GameState {
   isUsingComputer: boolean;
   setUsingComputer: (val: boolean) => void;
   currentLocation: string;
+  previousLocation: string;
   setCurrentLocation: (loc: string) => void;
 
   // ── Missions ────────────────────────────────────────────
@@ -112,7 +113,11 @@ export const useGameStore = create<GameState>()(
     isUsingComputer: false,
     setUsingComputer: (val) => set({ isUsingComputer: val }),
     currentLocation: 'apartment',
-    setCurrentLocation: (loc) => set({ currentLocation: loc }),
+    previousLocation: 'city',
+    setCurrentLocation: (loc) => set((state) => ({
+      previousLocation: state.currentLocation,
+      currentLocation: loc,
+    })),
 
     // ── Missions ────────────────────────────────────────────
     missions: MISSIONS_DATA,

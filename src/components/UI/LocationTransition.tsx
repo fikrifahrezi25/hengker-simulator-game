@@ -3,13 +3,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 
 const LOCATION_NAMES: Record<string, { name: string; subtitle: string; icon: string }> = {
-  apartment:     { name: 'Your Apartment',       subtitle: 'Meridian Apartments, Block 3',    icon: '🏠' },
-  city:          { name: 'Neo Satria City',       subtitle: 'Residential District — Street Level', icon: '🌆' },
-  'cyber-cafe':  { name: 'Meridian Cyber Cafe',   subtitle: 'Shopping District, Meridian St.', icon: '☕' },
-  'computer-store': { name: "Chen's Tech Store",  subtitle: 'Shopping District',               icon: '⚙' },
-  university:    { name: 'Neo Satria University', subtitle: 'University District',              icon: '◈' },
-  'business-district': { name: 'Business District', subtitle: 'Corporate Zone',                icon: '🏢' },
+  apartment:        { name: 'Your Apartment',         subtitle: 'Meridian Apartments, Block 3',          icon: '🏠' },
+  city:             { name: 'Neo Satria City',         subtitle: 'Residential District — Street Level',   icon: '🌆' },
+  'cyber-cafe':     { name: 'Meridian Cyber Cafe',     subtitle: 'Shopping District, Meridian St.',       icon: '☕' },
+  'computer-store': { name: "Chen's Tech Store",       subtitle: 'Shopping District',                     icon: '🖥' },
+  university:       { name: 'Neo Satria University',   subtitle: 'University District',                   icon: '🎓' },
+  'business-district': { name: 'Business District',   subtitle: 'Corporate Zone',                        icon: '🏢' },
 };
+
+// Generic interior label derived from location id
+function getInteriorInfo(loc: string): { name: string; subtitle: string; icon: string } {
+  if (loc.includes('res'))   return { name: 'Residential Building', subtitle: 'Meridian Residential District', icon: '🏘' };
+  if (loc.includes('uni'))   return { name: 'University Building',  subtitle: 'Neo Satria University Campus',  icon: '🎓' };
+  if (loc.includes('biz'))   return { name: 'Office Building',      subtitle: 'Business District',             icon: '🏢' };
+  if (loc.includes('tech'))  return { name: 'Tech Park Building',   subtitle: 'Innovation District',           icon: '💡' };
+  if (loc.includes('shop'))  return { name: 'Shop',                 subtitle: 'Shopping District',             icon: '🛍' };
+  if (loc.includes('ind'))   return { name: 'Industrial Facility',  subtitle: 'Industrial District',           icon: '🏭' };
+  if (loc.includes('mixed')) return { name: 'Mixed-Use Building',   subtitle: 'City Centre',                   icon: '🏬' };
+  if (loc.includes('se') || loc.includes('sw')) {
+    return { name: 'Building', subtitle: 'Neo Satria City', icon: '🚪' };
+  }
+  return { name: 'Building', subtitle: 'Neo Satria City', icon: '📍' };
+}
 
 export default function LocationTransition() {
   const currentLocation = useGameStore((s) => s.currentLocation);
@@ -19,11 +34,9 @@ export default function LocationTransition() {
 
   useEffect(() => {
     if (currentLocation !== prevLocation) {
-      const info = LOCATION_NAMES[currentLocation] ?? {
-        name: currentLocation,
-        subtitle: 'Neo Satria City',
-        icon: '📍',
-      };
+      const info = LOCATION_NAMES[currentLocation]
+        ?? (currentLocation.startsWith('building-') ? getInteriorInfo(currentLocation) : null)
+        ?? { name: currentLocation, subtitle: 'Neo Satria City', icon: '📍' };
       setLocationInfo(info);
       setShow(true);
       setPrevLocation(currentLocation);
@@ -40,22 +53,22 @@ export default function LocationTransition() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.3 }}
         >
-          {/* Dark overlay */}
+          {/* Full black flash → fade to transparent */}
           <motion.div
             className="absolute inset-0 bg-black"
-            initial={{ opacity: 0.8 }}
+            initial={{ opacity: 1 }}
             animate={{ opacity: 0 }}
-            transition={{ duration: 1.5, delay: 0.8 }}
+            transition={{ duration: 1.2, delay: 0.5 }}
           />
-          {/* Location card */}
+          {/* Location card — fades in then out */}
           <motion.div
             className="relative glass-dark rounded-2xl px-10 py-6 text-center"
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.35, delay: 0.15 }}
           >
             <div className="text-4xl mb-3">{locationInfo.icon}</div>
             <div className="text-white font-bold text-xl mb-1">{locationInfo.name}</div>
